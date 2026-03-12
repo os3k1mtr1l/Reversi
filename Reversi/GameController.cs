@@ -19,10 +19,14 @@ namespace Reversi
         private Mode m_mode;
         private Difficulty m_difficulty;
 
+        private CancellationTokenSource? m_cancellationToken;
+        private object m_lock;
+
         public GameController(Label turn_indendification, Label score_text, Panel playzone)
         {
             m_player_score = new int[2];
             m_valid_moves = new int[2];
+            m_lock = new object();
 
             m_board = new Board(UIUpdate_Trigger);
             m_uiboard = new UIBoard(playzone, Move_OnClick);
@@ -30,7 +34,7 @@ namespace Reversi
             m_score_text = score_text;
         }
 
-        private async void TBotPlay()
+        private async void TBotPlay(CancellationToken ct)
         {
             Console.WriteLine($"BotThread::Thread started: {Thread.CurrentThread.ThreadState}");
 
@@ -42,8 +46,21 @@ namespace Reversi
             watch.Stop();
 
             Console.WriteLine($"BotThread::Minimax time: {watch.Elapsed.TotalSeconds} s");
+
+            int remainingDelay = Math.Max(0, 500 - (int)watch.ElapsedMilliseconds);
             Console.WriteLine("BotThread::Thinking");
-            Thread.Sleep(500);
+
+            try
+            {
+                await Task.Delay(remainingDelay, ct);
+            }
+            catch (TaskCanceledException)
+            {
+                Console.WriteLine("BotThread::Thinking cancelled safely.");
+                return;
+            }
+
+            Console.WriteLine("BotThread::Thinking ended succesfully");
 
             if (move.X != -1)
             {
@@ -137,7 +154,7 @@ namespace Reversi
 
             if (IsAgainstBot())
             {
-                Task.Run(TBotPlay);
+                Task.Run(() => TBotPlay(m_cancellationToken.Token));
             }
 
             Console.WriteLine(m_board);
@@ -160,19 +177,30 @@ namespace Reversi
 
         public void Restart()
         {
-            m_turn = (CellType)(RandomNumberGenerator.GetInt32(0, 100) % 2);
+            lock (m_lock)
+            {
+                if (m_cancellationToken != null)
+                {
+                    m_cancellationToken.Cancel();
+                    m_cancellationToken.Dispose();
+                }
 
-            m_mode = Settings.GetMode();
-            m_difficulty = Settings.GetDifficulty();
+                m_cancellationToken = new CancellationTokenSource();
 
-            Array.Fill(m_player_score, 0);
+                m_turn = (CellType)(RandomNumberGenerator.GetInt32(0, 100) % 2);
 
-            m_board.Reset();
-            m_uiboard.Reset();
+                m_mode = Settings.GetMode();
+                m_difficulty = Settings.GetDifficulty();
 
-            SetStartPosition();
-            Update();
-            ProcessTurn();
+                Array.Fill(m_player_score, 0);
+
+                m_board.Reset();
+                m_uiboard.Reset();
+
+                SetStartPosition();
+                Update();
+                ProcessTurn();
+            }
         }
 
         private void ShowWinnerMessage()
