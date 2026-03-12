@@ -8,9 +8,14 @@ namespace Reversi
         private readonly Panel[] m_board;
         private readonly Bitmap[] m_images = null!;
 
-        public UIBoard(Panel playzone, EventHandler function)
+        private readonly Label m_score_text;
+        private readonly Label m_turn_identification;
+
+        public UIBoard(Panel playzone, Label turn_identification, Label score_text, EventHandler function)
         {
             m_playzone = playzone;
+            m_turn_identification = turn_identification;
+            m_score_text = score_text;
             m_images = new Bitmap[4];
             m_board = new Panel[Constants.BOARD_SIZE.Width * Constants.BOARD_SIZE.Height];
 
@@ -54,6 +59,12 @@ namespace Reversi
             m_board[indx].Tag = type;
             m_board[indx].BackgroundImage = m_images[(int)type];
             m_board[indx].Cursor = type == CellType.AVAILABLE ? Cursors.Cross : Cursors.No;
+        }
+
+        public void TextUpdate(int[] score, CellType turn)
+        {
+            m_score_text.Text = $"{score[0],2} : {score[1],2}";
+            m_turn_identification.Text = $"Player {turn} turn";
         }
 
         public void Reset()

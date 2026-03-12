@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 namespace Reversi
@@ -7,9 +8,6 @@ namespace Reversi
     {
         private readonly Board m_board;
         private readonly UIBoard m_uiboard;
-
-        private readonly Label m_score_text;
-        private readonly Label m_turn_indendification;
         
         private CellType m_turn;
         private int m_player_index;
@@ -21,6 +19,7 @@ namespace Reversi
 
         private CancellationTokenSource? m_cancellationToken;
         private object m_lock;
+        private Progress<Point> m_progress;
 
         public GameController(Label turn_indendification, Label score_text, Panel playzone)
         {
@@ -28,10 +27,20 @@ namespace Reversi
             m_valid_moves = new int[2];
             m_lock = new object();
 
+            m_progress = new(move =>
+            {
+                MakeMove(move.X, move.Y);
+                Update();
+                ProcessTurn();
+            });
+
             m_board = new Board(UIUpdate_Trigger);
-            m_uiboard = new UIBoard(playzone, Move_OnClick);
-            m_turn_indendification = turn_indendification;
-            m_score_text = score_text;
+            m_uiboard = new UIBoard(
+                playzone,
+                turn_indendification,
+                score_text,
+                Move_OnClick
+            );
         }
 
         private async void TBotPlay(CancellationToken ct)
@@ -64,10 +73,8 @@ namespace Reversi
 
             if (move.X != -1)
             {
+                ((IProgress<Point>)m_progress).Report(move);
                 Console.WriteLine($"BotThread::AI MOVE: ({move.X}, {move.Y}) {m_turn}");
-                MakeMove(move.X, move.Y);
-                Update();
-                ProcessTurn();
             }
             else Console.WriteLine("BotThread::No moves are taken");
 
@@ -116,11 +123,10 @@ namespace Reversi
         {
             SwitchTurn();
             m_board.Update(m_turn);
-
             m_player_score = m_board.Score;
             m_valid_moves[m_player_index] = m_board.ValidMoves[m_player_index].Count;
+            m_uiboard.TextUpdate(m_player_score, m_turn);
 
-            m_score_text.Text = $"{m_player_score[0],2} : {m_player_score[1],2}";
             Console.WriteLine($"Valid moves for player {m_turn}: {m_valid_moves[m_player_index]}");
         }
 
@@ -135,8 +141,7 @@ namespace Reversi
             m_turn = (CellType)(((int)m_turn + 1) % 2);
             m_player_index = (int)m_turn;
 
-            m_turn_indendification.Text = $"Player {m_turn} turn";
-            Console.WriteLine(m_turn_indendification.Text);
+            Console.WriteLine($"Turn switch, now: {m_turn}");
         }
 
         private void ProcessTurn()
