@@ -21,3 +21,8 @@ Featuring the local PvP and PvE game-modes, functional UI and one-hand controls.
 ## Requirements
 - **.NET 8.0 SDK** or higher
 - Windows OS (Windows Forms is used for the GUI)
+
+## Attribution
+<a href="https://www.flaticon.com/free-icons/gaming" title="gaming icons">Gaming icons created by Flat Icons - Flaticon</a>
+
+<a href="https://www.flaticon.com/free-icons/toolbox" title="toolbox icons">Toolbox icons created by Freepik - Flaticon</a>
